@@ -41,14 +41,6 @@ pub enum Direct {
     Receive,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum Protocol {
-    Can2a,
-    #[default]
-    Can2b,
-    J1939,
-}
-
 /// Transmit and Receive device trait.
 pub trait CanDeviceSync {
     type Error;

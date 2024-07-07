@@ -1,48 +1,89 @@
-mod can2a;
-mod can2b;
-mod j1939;
-
-use crate::constant::SFF_MASK;
-pub use crate::identifier::can2a::Can2A;
-pub use crate::identifier::can2b::Can2B;
-pub use crate::identifier::j1939::J1939;
+use std::fmt::format;
+use crate::constant::{EFF_MASK, SFF_MASK, SFF_MASK_INV};
+use crate::j1939::J1939Id;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Id {
-    Can2A(Can2A),
-    Can2B(Can2B),
-    J1939(J1939),
+    Standard(u16),
+    Extended(u32),
+    J1939(J1939Id),
 }
 
 impl Id {
+    #[inline]
+    pub fn from_bits(bits: u32, extended: bool) -> Self {
+        let bits = bits & EFF_MASK;
+        if extended {
+            Self::Extended(bits)
+        }
+        else {
+            if bits & SFF_MASK_INV > 0 {
+                Self::Extended(bits)
+            }
+            else {
+                Self::Standard(bits as u16)
+            }
+        }
+    }
+
+    #[inline]
+    pub fn from_hex(hex_str: &str, extended: bool) -> Self {
+        let bits = u32::from_str_radix(hex_str, 16).unwrap_or_default();
+        Self::from_bits(bits, extended)
+    }
+
+    #[inline]
+    pub fn try_from_bits(bits: u32, extended: bool) -> Option<Self> {
+        if bits > EFF_MASK { None }
+        else { Some(Self::from_bits(bits, extended)) }
+    }
+
+    #[inline]
+    pub fn try_from_hex(hex_str: &str, extended: bool) -> Option<Self> {
+        match u32::from_str_radix(hex_str, 16) {
+            Ok(bits) => Self::try_from_bits(bits, extended),
+            Err(_) => None,
+        }
+    }
+
+    #[inline]
+    pub fn into_bits(self) -> u32 {
+        match self {
+            Self::Standard(v) => v as u32,
+            Self::Extended(v) => v,
+            Self::J1939(v) => v.into_bits(),
+        }
+    }
+
+    #[inline]
+    pub fn into_hex(self) -> String {
+        format(format_args!("{:08X}", self.into_bits()))
+    }
+
     /// Returns this CAN Identifier as a raw 32-bit integer.
     #[inline]
     #[must_use]
-    pub const fn as_raw(&self) -> u32 {
-        match self {
-            Self::Can2A(v) => v.into_bits() as u32,
-            Self::Can2B(v) => v.into_bits(),
-            Self::J1939(v) => v.into_bits(),
-        }
+    pub fn as_raw(self) -> u32 {
+        self.into_bits()
     }
 
     /// Returns the Base ID part of this extended identifier.
     #[inline]
     #[must_use]
-    pub fn standard_id(&self) -> Self {
+    pub fn standard_id(self) -> Self {
         match self {
-            Self::Can2A(_) => self.clone(),
-            Self::Can2B(v) => Self::Can2A(Can2A::from_bits((v.into_bits() >> 18) as u16)),     // ID-28 to ID-18
-            Self::J1939(v)  => Self::Can2A(Can2A::from_bits((v.into_bits() >> 18) as u16)),     // ID-28 to ID-18
+            Self::Standard(_) => self.clone(),
+            Self::Extended(v) => Self::Standard((v >> 18) as u16),     // ID-28 to ID-18
+            Self::J1939(v) => Self::Standard((v.into_bits() >> 18) as u16)
         }
     }
 
     #[inline]
     pub fn is_extended(&self) -> bool {
         match self {
-            Self::Can2A(_) => false,
-            Self::Can2B(v) => (v.into_bits() & !SFF_MASK) > 0,
-            Self::J1939(v) => (v.into_bits() & !SFF_MASK) > 0,
+            Self::Standard(_) => false,
+            Self::Extended(v) => (*v & !SFF_MASK) > 0,
+            Self::J1939(_) => true,
         }
     }
 }

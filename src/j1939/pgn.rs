@@ -1,8 +1,7 @@
 use std::fmt::format;
 use bitfield_struct::bitfield;
 use crate::Conversion;
-use crate::identifier::J1939;
-use crate::j1939::DestinationAddress;
+use crate::j1939::{DestinationAddress, J1939, J1939Id};
 
 /// Represents the assignment typeof a Protocol Data Unit (PDU).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -222,15 +221,14 @@ impl Pgn {
     }
 }
 
-impl J1939 {
+impl J1939Id {
     /// Computes the PGN bitfield value based on the 29-bit identifier fields.
     ///
     /// # Returns
     /// The combined PGN bitfield value.
     #[must_use]
-    pub const fn pgn_bits(&self) -> u32 {
+    pub fn pgn_bits(&self) -> u32 {
         let pgn_bitfield = Pgn::new()
-            .with_reserved_bits(self.reserved())
             .with_data_page_bits(self.data_page())
             .with_pdu_format_bits(self.pdu_format())
             .with_pdu_specific_bits(self.pdu_specific());
@@ -243,9 +241,8 @@ impl J1939 {
     /// # Returns
     /// A [`Pgn`] bitfield initialized with the 29-bit identifier fields.
     #[must_use]
-    pub const fn pgn(&self) -> Pgn {
+    pub fn pgn(&self) -> Pgn {
         Pgn::new()
-            .with_reserved_bits(self.reserved())
             .with_data_page_bits(self.data_page())
             .with_pdu_format_bits(self.pdu_format())
             .with_pdu_specific_bits(self.pdu_specific())

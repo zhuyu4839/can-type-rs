@@ -1,6 +1,6 @@
 [package]
 name = "can-type-rs"
-version = "0.2.0"
+version = "1.0.0"
 edition = "2021"
 authors = ["zhuyu <zhuyu4839@gmail.com>"]
 keywords = ["can", "j1939"]

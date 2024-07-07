@@ -1,5 +1,5 @@
 use std::fmt::{Display, Formatter, Write};
-use crate::{Direct, Protocol};
+use crate::Direct;
 use crate::identifier::Id;
 
 /// CAN 2.0
@@ -16,7 +16,7 @@ pub trait Frame<T: Display> {
     fn set_timestamp(&mut self, value: Option<u64>) -> &mut Self
         where Self: Sized;
     
-    fn id(&self, protocol: Protocol) -> Id;
+    fn id(&self) -> Id;
     
     fn is_can_fd(&self) -> bool;
     
@@ -81,7 +81,7 @@ impl<T: Display> Display for dyn Frame<T> {
                    self.channel(),
                    direct(self.direct()),
                    // if self.is_rx() { "Rx" } else { "Tx" },
-                   format!("{: >8x}", self.id(Default::default()).as_raw()),
+                   format!("{: >8x}", self.id().as_raw()),
                    if self.is_bitrate_switch() {
                        flags |= 1 << 13;
                        1
@@ -107,7 +107,7 @@ impl<T: Display> Display for dyn Frame<T> {
             write!(f, "{:.3} {} {}{: <4} {} {} {} {}",
                    self.timestamp() as f64 / 1000.,
                    self.channel(),
-                   format!("{: >8x}", self.id(Default::default()).as_raw()),
+                   format!("{: >8x}", self.id().as_raw()),
                    if self.is_extended() { "x" } else { "" },
                    direct(self.direct()),
                    // if self.is_rx() { "Rx" } else { "Tx" },
