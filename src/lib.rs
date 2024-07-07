@@ -40,28 +40,3 @@ pub enum Direct {
     Transmit,
     Receive,
 }
-
-/// Transmit and Receive device trait.
-pub trait CanDeviceSync {
-    type Error;
-    type Frame;
-    type Channel;
-
-    fn transmit_sync(&self, channel: Self::Channel, frames: Self::Frame, canfd: bool, _: Option<usize>)
-        -> Result<usize, Self::Error>;
-
-    fn receive_sync(&self, channel: Self::Channel, canfd: bool, timeout: Option<usize>)
-        -> Result<Self::Frame, Self::Error>;
-}
-
-pub trait CanDeviceAsync {
-    type Error;
-    type Frame;
-    type Channel;
-
-    fn transmit_async(&self, channel: Self::Channel, frames: Self::Frame, canfd: bool, _: Option<usize>)
-        -> impl Future<Output = Result<usize, Self::Error>>;
-
-    fn receive_async(&self, channel: Self::Channel, canfd: bool, timeout: Option<usize>)
-        -> impl Future<Output = Result<Self::Frame, Self::Error>>;
-}
