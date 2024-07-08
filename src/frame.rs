@@ -3,7 +3,8 @@ use crate::Direct;
 use crate::identifier::Id;
 
 /// CAN 2.0
-pub trait Frame<T: Display> {
+pub trait Frame {
+    type Channel: Display;
     
     fn new(id: impl Into<Id>, data: &[u8]) -> Option<Self>
         where Self: Sized;
@@ -49,9 +50,9 @@ pub trait Frame<T: Display> {
     fn set_esi(&mut self, value: bool) -> &mut Self
         where Self: Sized;
     
-    fn channel(&self) -> T;
+    fn channel(&self) -> Self::Channel;
     
-    fn set_channel(&mut self, value: T) -> &mut Self
+    fn set_channel(&mut self, value: Self::Channel) -> &mut Self
         where Self: Sized;
     
     fn data(&self) -> &[u8];
@@ -61,7 +62,7 @@ pub trait Frame<T: Display> {
     fn length(&self) -> usize;
 }
 
-impl<T: Display> Display for dyn Frame<T> {
+impl<T: Display> Display for dyn Frame<Channel = T> {
     /// Output Frame as `asc` String.
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let data_str = if self.is_remote() {
