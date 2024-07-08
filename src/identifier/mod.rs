@@ -1,5 +1,5 @@
 use std::fmt::format;
-use crate::constant::{EFF_MASK, SFF_MASK, SFF_MASK_INV};
+use crate::constant::{EFF_MASK, SFF_MASK_INV};
 use crate::j1939::J1939Id;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -82,7 +82,7 @@ impl Id {
     pub fn is_extended(&self) -> bool {
         match self {
             Self::Standard(_) => false,
-            Self::Extended(v) => (*v & !SFF_MASK) > 0,
+            Self::Extended(_) |
             Self::J1939(_) => true,
         }
     }
