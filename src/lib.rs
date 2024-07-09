@@ -43,8 +43,8 @@ pub enum Direct {
 }
 
 pub trait AsyncCanDevice {
-    type Frame;
-    type Device;
+    type Frame: Send;
+    type Device: Clone;
     fn new(device: Self::Device) -> Self;
     /// Get the sender for transmit frame.
     fn sender(&self) -> mpsc::Sender<Self::Frame>;
