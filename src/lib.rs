@@ -1,3 +1,6 @@
+use std::sync::{Arc, mpsc, Mutex};
+use crate::identifier::Id;
+
 pub mod constant;
 pub mod frame;
 pub mod identifier;
@@ -32,9 +35,41 @@ pub trait Conversion
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Eq, PartialEq, Default)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
 pub enum Direct {
     #[default]
     Transmit,
     Receive,
+}
+
+pub trait AsyncCanDevice {
+    type Frame;
+    type Device;
+    fn new(device: Self::Device) -> Self;
+    /// Get the sender for transmit frame.
+    fn sender(&self) -> mpsc::Sender<Self::Frame>;
+    /// Register transmit and receive frame listener.
+    fn register_listener(&mut self, name: String, listener: Box<dyn CanListener<Frame = Self::Frame>>);
+    /// Unregister transmit and receive frame listener.
+    fn unregister_listener(&mut self, name: String);
+    /// Unregister all transmit and receive frame listeners.
+    fn unregister_all(&mut self);
+    /// Get all transmit and receive frame listener's names.
+    fn listener_names(&self) -> Vec<String>;
+    /// start transmit loop.
+    fn async_transmit(device: Arc<Mutex<Self>>, interval_ms: u64) -> impl std::future::Future<Output = ()> + Send;
+    /// start receive loop.
+    fn async_receive(device: Arc<Mutex<Self>>, interval_ms: u64) -> impl std::future::Future<Output = ()> + Send;
+    /// start `async_transmit` and `async_receive`
+    fn async_start(&self, interval_ms: u64);
+    /// Close the device and stop transmit and receive loop.
+    fn close(&mut self);
+}
+
+pub trait CanListener: Send + Sync {
+    type Frame;
+    /// Callback when frame transmit success.
+    fn on_frame_transmitted(&self, id: Id);
+    /// Callback when frames received.
+    fn on_frame_received(&self, frames: &Vec<Self::Frame>);
 }

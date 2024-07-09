@@ -16,8 +16,9 @@ pub trait Frame {
     
     fn set_timestamp(&mut self, value: Option<u64>) -> &mut Self
         where Self: Sized;
-    
-    fn id(&self) -> Id;
+
+    /// Prioritizes returning J1939Id if j1939 is true.
+    fn id(&self, j1939: bool) -> Id;
     
     fn is_can_fd(&self) -> bool;
     
@@ -54,7 +55,7 @@ pub trait Frame {
     
     fn set_channel(&mut self, value: Self::Channel) -> &mut Self
         where Self: Sized;
-    
+
     fn data(&self) -> &[u8];
     
     fn dlc(&self) -> usize;
@@ -68,7 +69,8 @@ impl<T: Display> Display for dyn Frame<Channel = T> {
         let data_str = if self.is_remote() {
             " ".to_owned()
         } else {
-            self.data().iter()
+            self.data()[..self.length()]
+                .iter()
                 .fold(String::new(), |mut out, &b| {
                     let _ = write!(out, "{b:02x} ");
                     out
@@ -82,7 +84,7 @@ impl<T: Display> Display for dyn Frame<Channel = T> {
                    self.channel(),
                    direct(self.direct()),
                    // if self.is_rx() { "Rx" } else { "Tx" },
-                   format!("{: >8x}", self.id().as_raw()),
+                   format!("{: >8x}", self.id(false).as_raw()),
                    if self.is_bitrate_switch() {
                        flags |= 1 << 13;
                        1
@@ -108,7 +110,7 @@ impl<T: Display> Display for dyn Frame<Channel = T> {
             write!(f, "{:.3} {} {}{: <4} {} {} {} {}",
                    self.timestamp() as f64 / 1000.,
                    self.channel(),
-                   format!("{: >8x}", self.id().as_raw()),
+                   format!("{: >8x}", self.id(false).as_raw()),
                    if self.is_extended() { "x" } else { "" },
                    direct(self.direct()),
                    // if self.is_rx() { "Rx" } else { "Tx" },
