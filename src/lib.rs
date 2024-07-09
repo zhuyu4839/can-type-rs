@@ -49,11 +49,11 @@ pub trait AsyncCanDevice {
     /// Get the sender for transmit frame.
     fn sender(&self) -> mpsc::Sender<Self::Frame>;
     /// Register transmit and receive frame listener.
-    fn register_listener(&mut self, name: String, listener: Box<dyn CanListener<Frame = Self::Frame>>);
+    fn register_listener(&mut self, name: String, listener: Box<dyn CanListener<Frame = Self::Frame>>) -> bool;
     /// Unregister transmit and receive frame listener.
-    fn unregister_listener(&mut self, name: String);
+    fn unregister_listener(&mut self, name: String) -> bool;
     /// Unregister all transmit and receive frame listeners.
-    fn unregister_all(&mut self);
+    fn unregister_all(&mut self) -> bool;
     /// Get all transmit and receive frame listener's names.
     fn listener_names(&self) -> Vec<String>;
     /// start transmit loop.
