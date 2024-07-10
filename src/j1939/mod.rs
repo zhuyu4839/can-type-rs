@@ -1,7 +1,11 @@
 mod address;
+mod message;
+mod payload;
 mod pgn;
 
 pub use address::*;
+pub use message::*;
+pub use payload::*;
 pub use pgn::*;
 
 use std::fmt::format;
