@@ -1,3 +1,4 @@
+use anyhow::Result;
 use std::fmt::format;
 use bitfield_struct::bitfield;
 use crate::Conversion;
@@ -93,18 +94,20 @@ impl Conversion for Pgn {
 
     /// Creates a new [`Pgn`] bitfield from a 32-bit integer.
     #[inline]
-    fn try_from_bits(bits: u32) -> Option<Self> {
-        if bits > 0x3FFFF { None }
-        else { Some(Self(bits)) }
+    fn try_from_bits(bits: u32) -> Result<Self> {
+        if bits > 0x3FFFF {
+            Err(anyhow::anyhow!(
+                "PGN bits out of range! Valid range is 0x0000..0xFFFF - got {bits:#04X}"
+            ))
+        }
+        else { Ok(Self(bits)) }
     }
 
     /// Creates a new [`Pgn`] bitfield from a base-16 (hex) string slice.
     #[inline]
-    fn try_from_hex(hex_str: &str) -> Option<Self> {
-        match u32::from_str_radix(hex_str, 16) {
-            Ok(bits) => Self::try_from_bits(bits),
-            Err(_) => None
-        }
+    fn try_from_hex(hex_str: &str) -> Result<Self> {
+        let bits = u32::from_str_radix(hex_str, 16)?;
+        Self::try_from_bits(bits)
     }
 
     /// Creates a new 32-bit integer from the [`Pgn`] bitfield.

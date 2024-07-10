@@ -17,7 +17,7 @@ pub trait J1939 {
         pdu_format: u8,
         pdu_specific: u8,
         source_addr: u8,
-    ) -> Option<Self> where Self: Sized;
+    ) -> anyhow::Result<Self> where Self: Sized;
 
     /// Returns the priority bits indicating the priority level.
     ///
@@ -123,9 +123,15 @@ impl Conversion for J1939Id {
     /// assert!(id_b.is_none());
     /// ```
     #[inline]
-    fn try_from_bits(bits: u32) -> Option<Self> {
-        if bits > EFF_MASK { None }
-        else { Some(J1939Id(bits)) }
+    fn try_from_bits(bits: u32) -> anyhow::Result<Self> {
+        if bits > EFF_MASK {
+            Err(anyhow::anyhow!(
+                "Identifier bits out of range! Valid range is 0..{} - got {}",
+                EFF_MASK,
+                bits
+            ))
+        }
+        else { Ok(J1939Id(bits)) }
     }
 
     /// Creates a new 29-bit J1939 identifier from a base-16 (hex) string slice.
@@ -142,11 +148,9 @@ impl Conversion for J1939Id {
     /// assert!(id_b.is_none())
     /// ```
     #[inline]
-    fn try_from_hex(hex_str: &str) -> Option<Self> {
-        match u32::from_str_radix(hex_str, 16) {
-            Ok(bits) => Self::try_from_bits(bits),
-            Err(_) => None,
-        }
+    fn try_from_hex(hex_str: &str) -> anyhow::Result<Self> {
+        let bits = u32::from_str_radix(hex_str, 16)?;
+        Self::try_from_bits(bits)
     }
 
     /// Creates a new 32-bit integer from the 29-bit J1939 identifier.
@@ -199,9 +203,12 @@ impl J1939 for J1939Id {
         pdu_format: u8,
         pdu_specific: u8,
         source_addr: u8,
-    ) -> Option<Self> {
+    ) -> anyhow::Result<Self> {
         if priority > 0x7 {
-            return None;
+            return Err(anyhow::anyhow!(
+                "Invalid priority! The priority value must be between 0 and 7 inclusive - got {}.",
+                priority
+            ));
         }
 
         let bitfield = J1939Id::new()
@@ -211,7 +218,7 @@ impl J1939 for J1939Id {
             .with_pdu_specific_bits(pdu_specific)
             .with_source_address_bits(source_addr);
 
-        Some(bitfield)
+        Ok(bitfield)
     }
 
     /// Returns the priority bits indicating the priority level.

@@ -6,10 +6,10 @@ use crate::identifier::Id;
 pub trait Frame {
     type Channel: Display;
     
-    fn new(id: impl Into<Id>, data: &[u8]) -> Option<Self>
+    fn new(id: impl Into<Id>, data: &[u8]) -> anyhow::Result<Self>
         where Self: Sized;
     
-    fn new_remote(id: impl Into<Id>, len: usize) -> Option<Self>
+    fn new_remote(id: impl Into<Id>, len: usize) -> anyhow::Result<Self>
         where Self: Sized;
     
     fn timestamp(&self) -> u64;
@@ -56,6 +56,7 @@ pub trait Frame {
     fn set_channel(&mut self, value: Self::Channel) -> &mut Self
         where Self: Sized;
 
+    /// ensure return the actual length of data.
     fn data(&self) -> &[u8];
     
     fn dlc(&self) -> usize;
@@ -69,7 +70,7 @@ impl<T: Display> Display for dyn Frame<Channel = T> {
         let data_str = if self.is_remote() {
             " ".to_owned()
         } else {
-            self.data()[..self.length()]
+            self.data()
                 .iter()
                 .fold(String::new(), |mut out, &b| {
                     let _ = write!(out, "{b:02x} ");

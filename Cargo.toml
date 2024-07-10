@@ -11,5 +11,6 @@ repository = "https://github.com/zhuyu4839/can-type-rs"
 readme = "README.md"
 
 [dependencies]
+anyhow = "1"
 bitflags = "2"
 bitfield-struct = "0"
