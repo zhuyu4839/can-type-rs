@@ -1,16 +1,32 @@
 use std::fmt::{Display, Formatter, Write};
-use crate::Direct;
+use isotp_rs::IsoTpFrame;
 use crate::identifier::Id;
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
+pub enum Direct {
+    #[default]
+    Transmit,
+    Receive,
+}
 
 /// CAN 2.0
 pub trait Frame {
     type Channel: Display;
     
-    fn new(id: impl Into<Id>, data: &[u8]) -> anyhow::Result<Self>
-        where Self: Sized;
+    fn new(id: impl Into<Id>, data: &[u8]) -> Option<Self>
+    where
+        Self: Sized;
     
-    fn new_remote(id: impl Into<Id>, len: usize) -> anyhow::Result<Self>
+    fn new_remote(id: impl Into<Id>, len: usize) -> Option<Self>
         where Self: Sized;
+
+    fn from_iso_tp(id: impl Into<Id>, frame: impl IsoTpFrame, padding: Option<u8>) -> Option<Self>
+    where
+        Self: Sized {
+        let data = frame.encode(padding);
+        Self::new(id, data.as_slice())
+    }
     
     fn timestamp(&self) -> u64;
     
@@ -23,7 +39,8 @@ pub trait Frame {
     fn is_can_fd(&self) -> bool;
     
     fn set_can_fd(&mut self, value: bool) -> &mut Self
-        where Self: Sized;
+    where
+        Self: Sized;
     
     fn is_remote(&self) -> bool;
     
@@ -32,34 +49,39 @@ pub trait Frame {
     fn direct(&self) -> Direct;
     
     fn set_direct(&mut self, direct: Direct) -> &mut Self
-        where Self: Sized;
+    where
+        Self: Sized;
     
     fn is_bitrate_switch(&self) -> bool;
     
     fn set_bitrate_switch(&mut self, value: bool) -> &mut Self
-        where Self: Sized;
+    where
+        Self: Sized;
     
     fn is_error_frame(&self) -> bool;
     
     fn set_error_frame(&mut self, value: bool) -> &mut Self
-        where Self: Sized;
+    where
+        Self: Sized;
 
     /// Error state indicator
     fn is_esi(&self) -> bool;
 
     /// Set error state indicator
     fn set_esi(&mut self, value: bool) -> &mut Self
-        where Self: Sized;
+    where
+        Self: Sized;
     
     fn channel(&self) -> Self::Channel;
     
     fn set_channel(&mut self, value: Self::Channel) -> &mut Self
-        where Self: Sized;
+    where
+        Self: Sized;
 
     /// ensure return the actual length of data.
     fn data(&self) -> &[u8];
     
-    fn dlc(&self) -> usize;
+    fn dlc(&self) -> Option<usize>;
     
     fn length(&self) -> usize;
 }
@@ -94,7 +116,7 @@ impl<T: Display> Display for dyn Frame<Channel = T> {
                        flags |= 1 << 14;
                        1
                    } else { 0 },
-                   format!("{: >2}", self.dlc()),
+                   format!("{: >2}", self.dlc().unwrap_or_default()),
                    format!("{: >2}", self.length()),
                    data_str,
                    format!("{: >8}", 0),       // message_duration

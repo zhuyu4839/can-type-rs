@@ -1,6 +1,6 @@
 [package]
 name = "can-type-rs"
-version = "1.0.4"
+version = "1.0.3"
 edition = "2021"
 authors = ["zhuyu <zhuyu4839@gmail.com>"]
 keywords = ["can", "j1939"]
@@ -11,7 +11,11 @@ repository = "https://github.com/zhuyu4839/can-type-rs"
 readme = "README.md"
 
 [dependencies]
-anyhow = "1"
 bitflags = "2"
 bitfield-struct = "0"
+log = "0"
 paste = "1"
+isotp-rs = "0.1"
+
+[dev-dependencies]
+anyhow = "1"

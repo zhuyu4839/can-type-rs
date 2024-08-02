@@ -18,14 +18,12 @@ impl Message {
     /// # Returns
     /// A new [`Message`] instance initialized with the provided parts.
     #[inline]
-    pub fn from_parts(id: Id, pdu: Pdu) -> anyhow::Result<Self> {
-        let id = match id {
-            Id::Standard(_) => Err(anyhow::anyhow!("Invalid Id")),
-            Id::Extended(v) => Ok(Id::J1939(J1939Id::from_bits(v))),
-            Id::J1939(_) => Ok(id)
-        }?;
-
-        Ok(Self { id, pdu })
+    pub fn from_parts(id: Id, pdu: Pdu) -> Option<Self> {
+        match id {
+            Id::Standard(_) => None,
+            Id::Extended(v) => Some( Self { id: Id::J1939(J1939Id::from_bits(v)), pdu }),
+            Id::J1939(_) => Some( Self { id, pdu }),
+        }
     }
 
     /// Destructures the [`Message`] into its parts: a 29-bit J1939 identifier and pdu containing 64 bits of generic data.
@@ -41,33 +39,51 @@ impl Message {
     }
 
     /// Constructs a new [`Message`] from raw bit representations of its components.
-    /// # Errors
-    /// - If failed to construct the identifier field from bits
-    /// - If failed to construct the pdu field from bits
     #[inline]
-    pub fn try_from_bits(hex_id: u32, hex_pdu: u64, pdu_type: PduType) -> anyhow::Result<Self> {
+    pub fn try_from_bits(hex_id: u32, hex_pdu: u64, pdu_type: PduType) -> Option<Self> {
         let id = Id::from_bits(hex_id, true);
         let pdu = match pdu_type {
-            PduType::Name => Pdu::NameField(NameField::try_from_bits(hex_pdu)?),
-            PduType::Data => Pdu::DataFiled(DataField::try_from_bits(hex_pdu)?),
+            PduType::Name => match NameField::try_from_bits(hex_pdu) {
+                Some(v) => Some(Pdu::NameField(v)),
+                None => None,
+            }
+            PduType::Data => match DataField::try_from_bits(hex_pdu) {
+                Some(v) => Some(Pdu::DataFiled(v)),
+                None => None,
+            },
         };
 
-        Ok(Self { id, pdu })
+        match pdu {
+            Some(pdu) => Some(Self { id, pdu }),
+            None => None,
+        }
     }
 
     /// Constructs a new [`Message`] from hexadecimal string representations of its components.
-    /// # Errors
-    /// - If failed to construct the identifier field from hex
-    /// - If failed to construct the pdu field from hex
     #[inline]
-    pub fn try_from_hex(hex_id: &str, hex_pdu: &str, pdu_type: PduType) -> anyhow::Result<Self> {
-        let id = Id::try_from_hex(hex_id, true)?;
-        let pdu = match pdu_type {
-            PduType::Name => Pdu::NameField(NameField::try_from_hex(hex_pdu)?),
-            PduType::Data => Pdu::DataFiled(DataField::try_from_hex(hex_pdu)?),
-        };
+    pub fn try_from_hex(hex_id: &str, hex_pdu: &str, pdu_type: PduType) -> Option<Self> {
+        let id = Id::try_from_hex(hex_id, true);
+        match id {
+            Some(id) => {
+                let pdu = match pdu_type {
+                    PduType::Name => match NameField::try_from_hex(hex_pdu) {
+                        Some(v) => Some(Pdu::NameField(v)),
+                        None => None,
+                    }
+                    PduType::Data => match DataField::try_from_hex(hex_pdu) {
+                        Some(v) => Some(Pdu::DataFiled(v)),
+                        None => None,
+                    },
+                };
 
-        Ok(Self { id, pdu })
+                match pdu {
+                    Some(pdu) => Some(Self { id, pdu }),
+                    None => None,
+                }
+
+            },
+            None => None,
+        }
     }
 
     /// Constructs a new [`Message`] from raw bit representations of its components.

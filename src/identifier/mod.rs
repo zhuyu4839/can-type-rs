@@ -33,21 +33,19 @@ impl Id {
     }
 
     #[inline]
-    pub fn try_from_bits(bits: u32, extended: bool) -> anyhow::Result<Self> {
-        if bits > EFF_MASK {
-            Err(anyhow::anyhow!(
-                "Identifier bits out of range! Valid range is 0..{} - got {}",
-                EFF_MASK,
-                bits
-            ))
+    pub fn try_from_bits(bits: u32, extended: bool) -> Option<Self> {
+        match bits {
+            0..=EFF_MASK => Some(Self::from_bits(bits, extended)),
+            _ => None,
         }
-        else { Ok(Self::from_bits(bits, extended)) }
     }
 
     #[inline]
-    pub fn try_from_hex(hex_str: &str, extended: bool) -> anyhow::Result<Self> {
-        let bits = u32::from_str_radix(hex_str, 16)?;
-        Self::try_from_bits(bits, extended)
+    pub fn try_from_hex(hex_str: &str, extended: bool) -> Option<Self> {
+        match u32::from_str_radix(hex_str, 16) {
+            Ok(v) => Self::try_from_bits(v, extended),
+            Err(_) => None
+        }
     }
 
     #[inline]

@@ -21,4 +21,4 @@ impl Display for CanMessage {
 }
   ```
   
-  * `AsyncCanDevice` [example](https://github.com/zhuyu4839/zlgcan-driver-rs/tree/master/zlgcan-driver/src/extends/mod.rs)
+  * `AsyncCanDevice` and `SyncCanDevice` [example](https://github.com/zhuyu4839/zlgcan-driver-rs/tree/master/zlgcan-driver/src/extends/mod.rs)

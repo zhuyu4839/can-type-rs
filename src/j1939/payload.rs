@@ -55,22 +55,18 @@ impl Conversion for DataField {
     }
 
     /// Creates a new [`DataField`] bitfield from a 64-bit integer.
-    /// # Errors
-    /// - Never (conversion is trivial)
     #[inline]
-    fn try_from_bits(bits: u64) -> anyhow::Result<Self> {
-        Ok(Self(bits))
+    fn try_from_bits(bits: u64) -> Option<Self> {
+        Some(Self(bits))
     }
 
     /// Creates a new [`DataField`] bitfield from a base-16 (hex) string slice.
-    /// # Errors
-    /// - If failed to parse input hexadecimal string slice.
-    /// - If insufficient output buffer length
     #[inline]
-    fn try_from_hex(hex_str: &str) -> anyhow::Result<Self> {
-        let bits = u64::from_str_radix(hex_str, 16).map_err(anyhow::Error::msg)?;
-
-        Ok(Self(bits))
+    fn try_from_hex(hex_str: &str) -> Option<Self> {
+        match u64::from_str_radix(hex_str, 16) {
+            Ok(v) => Some(Self(v)),
+            Err(_) => None,
+        }
     }
 
     /// Creates a new 64-bit integer from the [`DataField`] bitfield.
@@ -194,22 +190,18 @@ impl Conversion for NameField {
     }
 
     /// Creates a new [`NameField`] bitfield from a 64-bit integer.
-    /// # Errors
-    /// - Never (conversion is trivial)
     #[inline]
-    fn try_from_bits(bits: u64) -> anyhow::Result<Self> {
-        Ok(Self(bits))
+    fn try_from_bits(bits: u64) -> Option<Self> {
+        Some(Self(bits))
     }
 
     /// Creates a new [`NameField`] bitfield from a base-16 (hex) string slice.
-    /// # Errors
-    /// - If invalid encoding of provided Base16 string
-    /// - If insufficient output buffer length
     #[inline]
-    fn try_from_hex(hex_str: &str) -> anyhow::Result<Self> {
-        let bits = u64::from_str_radix(hex_str, 16).map_err(anyhow::Error::msg)?;
-
-        Ok(Self(bits))
+    fn try_from_hex(hex_str: &str) -> Option<Self> {
+        match u64::from_str_radix(hex_str, 16) {
+            Ok(v) => Some(Self(v)),
+            Err(_) => None,
+        }
     }
 
     /// Creates a new 64-bit integer from the [`NameField`] bitfield.
@@ -227,7 +219,7 @@ impl Conversion for NameField {
 
 impl NameField {
 
-    /// Indicates whether or not the ECU/CA can negotiate an address (true = yes; false = no).
+    /// Indicates whether the ECU/CA can negotiate an address (true = yes; false = no).
     #[must_use]
     pub const fn arbitrary_address(&self) -> bool {
         self.arbitrary_address_bits()
