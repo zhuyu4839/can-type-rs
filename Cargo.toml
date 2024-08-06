@@ -1,6 +1,6 @@
 [package]
 name = "can-type-rs"
-version = "1.0.4"
+version = "1.0.5"
 edition = "2021"
 authors = ["zhuyu <zhuyu4839@gmail.com>"]
 keywords = ["can", "j1939"]
@@ -15,6 +15,22 @@ bitflags = "2"
 bitfield-struct = "0"
 log = "0"
 paste = "1"
+isotp-rs = { path = "../isotp-rs" }
+
+[dependencies.tokio]
+version = "1"
+features = ["rt-multi-thread", "time"]
+optional = true
 
 [dev-dependencies]
 anyhow = "1"
+hex-literal = "0.4"
+
+[features]
+default = ["std2004"]
+async = ["tokio"]
+std2004 = []
+std2016 = []
+can-fd = []
+
+

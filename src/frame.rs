@@ -1,4 +1,5 @@
-use std::fmt::{Display, Formatter, Write};
+use std::fmt::{Debug, Display, Formatter, Write};
+use isotp_rs::IsoTpFrame;
 use crate::identifier::Id;
 
 #[repr(C)]
@@ -19,7 +20,14 @@ pub trait Frame {
     
     fn new_remote(id: impl Into<Id>, len: usize) -> Option<Self>
         where Self: Sized;
-    
+
+    fn from_iso_tp(id: impl Into<Id>, frame: impl IsoTpFrame, padding: Option<u8>) -> Option<Self>
+    where
+        Self: Sized {
+        let data = frame.encode(padding);
+        Self::new(id, data.as_slice())
+    }
+
     fn timestamp(&self) -> u64;
     
     fn set_timestamp(&mut self, value: Option<u64>) -> &mut Self
