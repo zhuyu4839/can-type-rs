@@ -15,7 +15,7 @@ bitflags = "2"
 bitfield-struct = "0"
 log = "0"
 paste = "1"
-isotp-rs = { path = "../isotp-rs" }
+isotp-rs = "0.1.1"
 
 [dependencies.tokio]
 version = "1"
