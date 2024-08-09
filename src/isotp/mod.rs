@@ -1,28 +1,30 @@
-pub mod client;
-mod util;
-// pub mod server;
+#[cfg(feature = "tokio")]
+mod asynchronous;
+#[cfg(feature = "tokio")]
+pub use asynchronous::AsyncCanIsoTp;
+mod synchronous;
+pub use synchronous::SyncCanIsoTp;
 
+mod context;
+mod util;
 
 use isotp_rs::{FlowControlContext, FlowControlState, FrameType, IsoTpFrame};
-use isotp_rs::constant::{P2_ISO14229, P2_STAR_ISO14229};
 use isotp_rs::error::Error as IsoTpError;
+use context::IsoTpContext;
 use crate::constant::*;
+use crate::device::CanListener;
+use crate::frame::Frame;
 
-#[derive(Debug, Clone, Copy)]
-pub struct P2Context {
-    pub p2: u16,        // ms
-    pub p2_offset: u16, // ms
-    pub p2_star: u32,   // ms
-}
-
-impl Default for P2Context {
-    fn default() -> Self {
-        Self {
-            p2: P2_ISO14229,
-            p2_offset: 0,
-            p2_star: P2_STAR_ISO14229,
-        }
+pub trait CanIsoTp {
+    type Channel: Clone + Eq + 'static;
+    fn new(channel: Self::Channel, address: Address) -> Self;
+    /// get the ISO-TP context that impl [`CanListener`]
+    #[inline]
+    fn get_frame_listener<F: Frame>(&self) -> Box<dyn CanListener<F, Self::Channel>> {
+        Box::new(self.context().clone())
     }
+    fn context(&self) -> &IsoTpContext<Self::Channel>;
+    fn mut_context(&mut self) -> &mut IsoTpContext<Self::Channel>;
 }
 
 /// ISO-TP address format.
@@ -34,8 +36,8 @@ pub enum AddressFormat {
     Normal = 0x01,      // 11bit CAN-ID
     NormalFixed = 0x02, // 29bit CAN-ID
     Extend = 0x03,      // 11bit Remote CAN-ID
-    ExtendMixed = 0x04, // 11bit and 29bit Remote CAN-ID mixed
-    Enhanced = 0x05,
+    ExtendMixed = 0x04, // 11bit and 11bit Remote CAN-ID mixed
+    Enhanced = 0x05,    // 11bit(Remote) and 29bot CAN-ID
 }
 
 /// ISO-TP address
@@ -69,6 +71,17 @@ pub enum CanIsoTpFrame {
     ConsecutiveFrame { sequence: u8, data: Vec<u8> },
     /// The ISO-TP flow control frame.
     FlowControlFrame(FlowControlContext)
+}
+
+impl<'a> From<&'a CanIsoTpFrame> for FrameType {
+    fn from(value: &'a CanIsoTpFrame) -> Self {
+        match value {
+            CanIsoTpFrame::SingleFrame { .. } => Self::Single,
+            CanIsoTpFrame::FirstFrame { .. } => Self::First,
+            CanIsoTpFrame::ConsecutiveFrame { .. } => Self::Consecutive,
+            CanIsoTpFrame::FlowControlFrame(_) => Self::FlowControl,
+        }
+    }
 }
 
 unsafe impl Send for CanIsoTpFrame {}
@@ -119,7 +132,7 @@ impl IsoTpFrame for CanIsoTpFrame {
             Self::ConsecutiveFrame { sequence, mut data } => {
                 let mut result = vec![FrameType::Consecutive as u8 | sequence];
                 result.append(&mut data);
-                result.resize(CAN_FRAME_MAX_SIZE, padding.unwrap_or(Default::default()));
+                result.resize(CAN_FRAME_MAX_SIZE, padding.unwrap_or(DEFAULT_PADDING));
                 result
             },
             Self::FlowControlFrame(context) => {
@@ -130,7 +143,7 @@ impl IsoTpFrame for CanIsoTpFrame {
                     context.block_size(),
                     context.st_min(),
                 ];
-                result.resize(CAN_FRAME_MAX_SIZE, padding.unwrap_or(Default::default()));
+                result.resize(CAN_FRAME_MAX_SIZE, padding.unwrap_or(DEFAULT_PADDING));
                 result
             },
         }

@@ -28,7 +28,7 @@ hex-literal = "0.4"
 
 [features]
 default = ["std2004"]
-async = ["tokio"]
+
 std2004 = []
 std2016 = []
 can-fd = []

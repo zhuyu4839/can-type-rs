@@ -9,7 +9,8 @@ mod std2016;
 #[cfg(feature = "std2016")]
 pub(crate) use std2016::*;
 
-use isotp_rs::{FlowControlContext, IsoTpFrame};
+use isotp_rs::{FlowControlContext, FrameType, IsoTpFrame};
+use isotp_rs::error::Error as IsoTpError;
 use crate::constant::{CAN_FRAME_MAX_SIZE, CANFD_FRAME_MAX_SIZE};
 use crate::isotp::CanIsoTpFrame;
 
@@ -66,18 +67,17 @@ fn add_flow_control(results: &mut Vec<CanIsoTpFrame>, flow_ctrl: &Vec<FlowContro
     }
 }
 
-fn parse(data: &[u8],
-         offset: &mut usize,
-         sequence: &mut u8,
-         results: &mut Vec<CanIsoTpFrame>,
-         flow_ctrl: Vec<FlowControlContext>,
-         offset_size: usize,
-         length: usize,
+fn parse<const FIRST_FRAME_SIZE: usize>(data: &[u8],
+                                        offset: &mut usize,
+                                        sequence: &mut u8,
+                                        results: &mut Vec<CanIsoTpFrame>,
+                                        flow_ctrl: Vec<FlowControlContext>,
+                                        length: usize,
 ) {
     loop {
         match *offset {
             0 => {
-                *offset += offset_size;
+                *offset += FIRST_FRAME_SIZE;
                 let frame = CanIsoTpFrame::FirstFrame {
                     length: length as u32,
                     data: Vec::from(&data[..*offset])
@@ -113,5 +113,21 @@ fn parse(data: &[u8],
                 results.push(frame);
             }
         }
+    }
+}
+
+#[inline]
+fn new_single_u<const N: usize, T: AsRef<[u8]>>(data: T) -> Result<CanIsoTpFrame, IsoTpError> {
+    let data = data.as_ref();
+    let length = data.len();
+    match length {
+        0 => Err(IsoTpError::EmptyPdu),
+        1..=SINGLE_FRAME_SIZE_2016 => {
+            let mut result = vec![FrameType::Single as u8 | length as u8];
+            result.append(&mut data.to_vec());
+            // result.resize(CAN_FRAME_MAX_SIZE, Default::default());
+            Ok(CanIsoTpFrame::SingleFrame { data: result })
+        },
+        v => Err(IsoTpError::LengthOutOfRange(v)),
     }
 }
