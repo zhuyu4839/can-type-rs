@@ -3,7 +3,7 @@ use isotp_rs::{FlowControlContext, FrameType};
 use isotp_rs::constant::{ISO_TP_MAX_LENGTH_2004, ISO_TP_MAX_LENGTH_2016};
 use crate::constant::{CAN_FRAME_MAX_SIZE, CANFD_FRAME_MAX_SIZE, DEFAULT_PADDING};
 use crate::isotp::CanIsoTpFrame;
-use crate::isotp::util::{add_flow_control, CONSECUTIVE_FRAME_SIZE, FIRST_FRAME_SIZE_2004, FIRST_FRAME_SIZE_2016, new_single_u, parse, SINGLE_FRAME_SIZE_2004, SINGLE_FRAME_SIZE_2016};
+use crate::isotp::util::{add_flow_control, CONSECUTIVE_FRAME_SIZE, FIRST_FRAME_SIZE_2004, FIRST_FRAME_SIZE_2016, parse, SINGLE_FRAME_SIZE_2004, SINGLE_FRAME_SIZE_2016};
 
 #[cfg(feature = "can-fd")]
 use crate::isotp::util::can_fd_resize;
@@ -105,7 +105,18 @@ pub(crate) fn encode_first(length: u32, mut data: Vec<u8>) -> Vec<u8> {
 }
 
 pub(crate) fn new_single<T: AsRef<[u8]>>(data: T) -> Result<CanIsoTpFrame, IsoTpError> {
-    new_single_u::<SINGLE_FRAME_SIZE_2016, T>(data)
+    let data = data.as_ref();
+    let length = data.len();
+    match length {
+        0 => Err(IsoTpError::EmptyPdu),
+        1..=SINGLE_FRAME_SIZE_2016 => {
+            let mut result = vec![FrameType::Single as u8 | length as u8];
+            result.append(&mut data.to_vec());
+            result.resize(SINGLE_FRAME_SIZE_2016, DEFAULT_PADDING);
+            Ok(CanIsoTpFrame::SingleFrame { data: result })
+        },
+        v => Err(IsoTpError::LengthOutOfRange(v)),
+    }
 }
 
 

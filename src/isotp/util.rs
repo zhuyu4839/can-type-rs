@@ -115,19 +115,3 @@ fn parse<const FIRST_FRAME_SIZE: usize>(data: &[u8],
         }
     }
 }
-
-#[inline]
-fn new_single_u<const N: usize, T: AsRef<[u8]>>(data: T) -> Result<CanIsoTpFrame, IsoTpError> {
-    let data = data.as_ref();
-    let length = data.len();
-    match length {
-        0 => Err(IsoTpError::EmptyPdu),
-        1..=SINGLE_FRAME_SIZE_2016 => {
-            let mut result = vec![FrameType::Single as u8 | length as u8];
-            result.append(&mut data.to_vec());
-            // result.resize(CAN_FRAME_MAX_SIZE, Default::default());
-            Ok(CanIsoTpFrame::SingleFrame { data: result })
-        },
-        v => Err(IsoTpError::LengthOutOfRange(v)),
-    }
-}

@@ -9,18 +9,19 @@ mod context;
 mod util;
 
 use isotp_rs::{FlowControlContext, FlowControlState, FrameType, IsoTpFrame};
+use isotp_rs::device::Listener;
 use isotp_rs::error::Error as IsoTpError;
 use context::IsoTpContext;
 use crate::constant::*;
-use crate::device::CanListener;
 use crate::frame::Frame;
+use crate::identifier::Id;
 
 pub trait CanIsoTp {
     type Channel: Clone + Eq + 'static;
     fn new(channel: Self::Channel, address: Address) -> Self;
-    /// get the ISO-TP context that impl [`CanListener`]
+    /// get the ISO-TP context that impl [`Listener`]
     #[inline]
-    fn get_frame_listener<F: Frame>(&self) -> Box<dyn CanListener<F, Self::Channel>> {
+    fn get_frame_listener<F: Frame + Clone>(&self) -> Box<dyn Listener<Self::Channel, Id, F>> {
         Box::new(self.context().clone())
     }
     fn context(&self) -> &IsoTpContext<Self::Channel>;
@@ -171,7 +172,7 @@ impl IsoTpFrame for CanIsoTpFrame {
 mod tests {
     use hex_literal::hex;
     use isotp_rs::IsoTpFrame;
-    use crate::constant::CAN_FRAME_MAX_SIZE;
+    use crate::constant::{CAN_FRAME_MAX_SIZE, DEFAULT_PADDING};
     use crate::isotp::util::{CONSECUTIVE_FRAME_SIZE, FIRST_FRAME_SIZE_2004};
     use super::{FlowControlState, CanIsoTpFrame};
 
@@ -310,7 +311,7 @@ mod tests {
                         for _ in 0..size {
                             expect.push(0x30);
                         }
-                        expect.resize(CAN_FRAME_MAX_SIZE, Default::default());
+                        expect.resize(CAN_FRAME_MAX_SIZE, DEFAULT_PADDING);
                         assert_eq!(frame.encode(None), expect);
                     }
                 },

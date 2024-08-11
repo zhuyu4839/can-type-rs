@@ -2,28 +2,18 @@ use std::fmt::Debug;
 use std::sync::{Arc, RwLock};
 use isotp_rs::{FlowControlContext, IsoTpEvent, IsoTpEventListener, IsoTpFrame, IsoTpState};
 use isotp_rs::constant::CONSECUTIVE_SEQUENCE_START;
+use isotp_rs::device::Listener;
 use isotp_rs::error::Error as IsoTpError;
 use crate::identifier::Id;
-use crate::device::CanListener;
 use crate::frame::Frame;
 use crate::isotp::{Address, CanIsoTpFrame};
 
 /// Consecutive frame data context.
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub(crate) struct DataContext {
     pub(crate) sequence: Option<u8>,
     pub(crate) length: Option<u32>,
     pub(crate) buffer: Vec<u8>,
-}
-
-impl Default for DataContext {
-    fn default() -> Self {
-        Self {
-            sequence: Default::default(),
-            length: Default::default(),
-            buffer: Default::default(),
-        }
-    }
 }
 
 pub(crate) struct InnerContext {
@@ -384,26 +374,8 @@ impl<Channel: Clone> IsoTpContext<Channel> {
 
 unsafe impl<Channel: Clone + Eq> Send for IsoTpContext<Channel> {}
 
-impl<F: Frame, Channel: Clone + Eq> CanListener<F, Channel> for IsoTpContext<Channel> {
-    fn on_frame_transmitted(&mut self, id: Id, channel: Channel) {
-        if channel != self.channel {
-            return;
-        }
-
-        match self.address() {
-            Ok(address) => {
-                if address.tx_id == id.as_raw() ||
-                    address.fid == id.as_raw() {
-                    if let Err(e) = self.state_remove(IsoTpState::Sending) {
-                        log::warn!("{}", e);
-                    }
-                }
-            },
-            Err(e) => log::warn!("{}", e),
-        }
-    }
-
-    fn on_frame_received(&mut self, frames: &Vec<F>, channel: Channel) {
+impl<Channel: Clone + Eq, F: Frame + Clone> Listener<Channel, Id, F> for IsoTpContext<Channel> {
+    fn on_frame_received(&mut self, channel: Channel, frames: &Vec<F>) {
         if channel != self.channel {
             return;
         }
@@ -445,6 +417,24 @@ impl<F: Frame, Channel: Clone + Eq> CanListener<F, Channel> for IsoTpContext<Cha
                                 break;
                             },
                         }
+                    }
+                }
+            },
+            Err(e) => log::warn!("{}", e),
+        }
+    }
+
+    fn on_frame_transmitted(&mut self, channel: Channel, id: Id) {
+        if channel != self.channel {
+            return;
+        }
+
+        match self.address() {
+            Ok(address) => {
+                if address.tx_id == id.as_raw() ||
+                    address.fid == id.as_raw() {
+                    if let Err(e) = self.state_remove(IsoTpState::Sending) {
+                        log::warn!("{}", e);
                     }
                 }
             },

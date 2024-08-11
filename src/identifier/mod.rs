@@ -9,6 +9,8 @@ pub enum Id {
     J1939(J1939Id),
 }
 
+unsafe impl Send for Id {}
+
 impl Id {
     #[inline]
     pub fn from_bits(bits: u32, extended: bool) -> Self {
