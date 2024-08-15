@@ -9,24 +9,15 @@ mod context;
 mod util;
 
 use isotp_rs::{FlowControlContext, FlowControlState, FrameType, IsoTpFrame};
-use isotp_rs::device::Listener;
 use isotp_rs::error::Error as IsoTpError;
-use context::IsoTpContext;
 use crate::constant::*;
-use crate::frame::Frame;
-use crate::identifier::Id;
 
-pub trait CanIsoTp {
-    type Channel: Clone + Eq + 'static;
-    fn new(channel: Self::Channel, address: Address) -> Self;
-    /// get the ISO-TP context that impl [`Listener`]
-    #[inline]
-    fn get_frame_listener<F: Frame + Clone>(&self) -> Box<dyn Listener<Self::Channel, Id, F>> {
-        Box::new(self.context().clone())
-    }
-    fn context(&self) -> &IsoTpContext<Self::Channel>;
-    fn mut_context(&mut self) -> &mut IsoTpContext<Self::Channel>;
-}
+// pub trait CanIsoTp {
+//     /// register iso-tp event listener
+//     fn register_listener(&mut self, listener: Box<dyn IsoTpEventListener>) -> bool;
+//     /// unregister iso-tp event listener
+//     fn unregister_listener(&mut self) -> bool;
+// }
 
 /// ISO-TP address format.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -150,8 +141,8 @@ impl IsoTpFrame for CanIsoTpFrame {
         }
     }
 
-    fn from_data<T: AsRef<[u8]>>(data: T, flow_ctrl: Vec<FlowControlContext>) -> Result<Vec<Self>, IsoTpError> {
-        util::from_data(data.as_ref(), flow_ctrl)
+    fn from_data<T: AsRef<[u8]>>(data: T) -> Result<Vec<Self>, IsoTpError> {
+        util::from_data(data.as_ref())
     }
 
     fn single_frame<T: AsRef<[u8]>>(data: T) -> Result<Self, IsoTpError> {
@@ -266,7 +257,7 @@ mod tests {
     #[test]
     fn test_data_to_multi() -> anyhow::Result<()> {
         let data = hex!("62 f1 87 44 56 43 37 45 32 30 30 30 30 30 37").as_slice();
-        let frames = CanIsoTpFrame::from_data(data, vec![])?;
+        let frames = CanIsoTpFrame::from_data(data)?;
         for (index, frame) in frames.into_iter().enumerate() {
             match index {
                 0 => {
@@ -285,7 +276,7 @@ mod tests {
 
         let mut size = 0x96;
         let data = vec![0x30; size];
-        let frames = CanIsoTpFrame::from_data(data, vec![])?;
+        let frames = CanIsoTpFrame::from_data(data)?;
         for (index, frame) in frames.into_iter().enumerate() {
             match index {
                 0 => {

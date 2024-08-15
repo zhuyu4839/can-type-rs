@@ -9,7 +9,7 @@ mod std2016;
 #[cfg(feature = "std2016")]
 pub(crate) use std2016::*;
 
-use isotp_rs::{FlowControlContext, FrameType, IsoTpFrame};
+use isotp_rs::{FlowControlContext, FlowControlState, FrameType, IsoTpFrame};
 use isotp_rs::error::Error as IsoTpError;
 use crate::constant::{CAN_FRAME_MAX_SIZE, CANFD_FRAME_MAX_SIZE};
 use crate::isotp::CanIsoTpFrame;
@@ -53,25 +53,10 @@ fn can_fd_resize(length: usize) -> Option<usize> {
     }
 }
 
-#[inline]
-fn add_flow_control(results: &mut Vec<CanIsoTpFrame>, flow_ctrl: &Vec<FlowControlContext>) {
-    if flow_ctrl.len() == 0 {
-        results.push(CanIsoTpFrame::default_flow_ctrl_frame());
-    }
-    else {
-        for fc in flow_ctrl {
-            results.push(CanIsoTpFrame::flow_ctrl_frame(
-                fc.state(), fc.block_size(), fc.st_min()
-            ));
-        }
-    }
-}
-
 fn parse<const FIRST_FRAME_SIZE: usize>(data: &[u8],
                                         offset: &mut usize,
                                         sequence: &mut u8,
                                         results: &mut Vec<CanIsoTpFrame>,
-                                        flow_ctrl: Vec<FlowControlContext>,
                                         length: usize,
 ) {
     loop {
@@ -83,8 +68,6 @@ fn parse<const FIRST_FRAME_SIZE: usize>(data: &[u8],
                     data: Vec::from(&data[..*offset])
                 };
                 results.push(frame);
-
-                add_flow_control(results, &flow_ctrl);
 
                 continue;
             },

@@ -3,7 +3,7 @@ use isotp_rs::{FlowControlContext, FrameType};
 use isotp_rs::constant::ISO_TP_MAX_LENGTH_2004;
 use crate::constant::{CAN_FRAME_MAX_SIZE, CANFD_FRAME_MAX_SIZE, DEFAULT_PADDING};
 use crate::isotp::CanIsoTpFrame;
-use crate::isotp::util::{add_flow_control, CONSECUTIVE_FRAME_SIZE, FIRST_FRAME_SIZE_2004, parse, SINGLE_FRAME_SIZE_2004};
+use crate::isotp::util::{CONSECUTIVE_FRAME_SIZE, FIRST_FRAME_SIZE_2004, parse, SINGLE_FRAME_SIZE_2004};
 
 #[cfg(feature = "can-fd")]
 use crate::isotp::util::can_fd_resize;
@@ -84,10 +84,7 @@ pub(crate) fn new_single<T: AsRef<[u8]>>(data: T) -> Result<CanIsoTpFrame, IsoTp
     }
 }
 
-pub(crate) fn from_data(
-    data: &[u8],
-    flow_ctrl: Vec<FlowControlContext>
-) -> Result<Vec<CanIsoTpFrame>, IsoTpError> {
+pub(crate) fn from_data(data: &[u8]) -> Result<Vec<CanIsoTpFrame>, IsoTpError> {
     let length = data.len();
     match length {
         0 => Err(IsoTpError::EmptyPdu),
@@ -97,7 +94,7 @@ pub(crate) fn from_data(
             let mut sequence = 1;
             let mut results = Vec::new();
 
-            parse::<FIRST_FRAME_SIZE_2004>(data, &mut offset, &mut sequence, &mut results, flow_ctrl, length);
+            parse::<FIRST_FRAME_SIZE_2004>(data, &mut offset, &mut sequence, &mut results, length);
 
             Ok(results)
         },
