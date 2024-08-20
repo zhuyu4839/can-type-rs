@@ -17,7 +17,7 @@ pub struct AsyncCanIsoTp<C, F> {
     pub(crate) address: Address,
     pub(crate) sender: Sender<F>,
     pub(crate) context: IsoTpContext,
-    pub(crate) state: IsoTpState,
+    pub(crate) state: Arc<Mutex<IsoTpState>>,
     pub(crate) listener: Arc<Mutex<Box<dyn IsoTpEventListener>>>,
 }
 
@@ -55,30 +55,26 @@ impl<C: Clone, F: Frame<Channel = C>> AsyncCanIsoTp<C, F> {
                 })?;
             frame.set_channel(self.channel.clone());
 
-            self.state |= IsoTpState::Sending;
+            self.state_append(IsoTpState::Sending);
+            if 0 == index && 1 < frame_len  {
+                self.state_append(IsoTpState::WaitFlowCtrl);
+            }
             self.sender.send(frame)
                 .map_err(|e| {
                     log::warn!("ISO-TP(CAN async) - transmit failed: {:?}", e);
                     IsoTpError::DeviceError
                 })?;
-
-            if 0 == index && 1 < frame_len  {
-                self.state |= IsoTpState::WaitFlowCtrl;
-            }
         }
 
         Ok(())
     }
 
     #[inline]
-    pub(crate) fn reset(&mut self) {
-        self.context.reset();
-    }
-
     pub(crate) fn on_single_frame(&mut self, data: Vec<u8>) {
         self.iso_tp_event(IsoTpEvent::DataReceived(data));
     }
 
+    #[inline]
     pub(crate) fn on_first_frame(&mut self, length: u32, data: Vec<u8>) {
         self.context.update_consecutive(length, data);
 
@@ -92,14 +88,14 @@ impl<C: Clone, F: Frame<Channel = C>> AsyncCanIsoTp<C, F> {
             Some(mut frame) => {
                 frame.set_channel(self.channel.clone());
 
-                assert!(!self.state.contains(IsoTpState::Sending));
+                self.state_append(IsoTpState::Sending);
                 match self.sender.send(frame) {
                     Ok(_) => {
                         self.iso_tp_event(IsoTpEvent::FirstFrameReceived);
                     },
                     Err(e) => {
                         log::warn!("ISO-TP - transmit failed: {:?}", e);
-                        self.state = IsoTpState::Error;
+                        self.state_append(IsoTpState::Error);
 
                         self.iso_tp_event(IsoTpEvent::ErrorOccurred(IsoTpError::DeviceError));
                     },
@@ -109,36 +105,38 @@ impl<C: Clone, F: Frame<Channel = C>> AsyncCanIsoTp<C, F> {
         }
     }
 
+    #[inline]
     pub(crate) fn on_consecutive_frame(&mut self, sequence: u8, data: Vec<u8>) {
         match self.context.append_consecutive(sequence, data) {
             Ok(event) => {
                 match event {
                     IsoTpEvent::DataReceived(_) => {
-                        self.reset();
+                        self.context.reset();
                     },
                     _ => {},
                 }
                 self.iso_tp_event(event);
             },
             Err(e) => {
-                self.state = IsoTpState::Error;
+                self.state_append(IsoTpState::Error);
                 self.iso_tp_event(IsoTpEvent::ErrorOccurred(e));
             }
         }
     }
 
+    #[inline]
     pub(crate) fn on_flow_ctrl_frame(&mut self, ctx: FlowControlContext) {
         match ctx.state() {
             FlowControlState::Continues => {
-                self.state.remove(IsoTpState::BussyWait | IsoTpState::WaitFlowCtrl);
+                self.state_remove(IsoTpState::WaitBusy | IsoTpState::WaitFlowCtrl);
             },
             FlowControlState::Wait => {
-                self.state |= IsoTpState::BussyWait;
+                self.state_append(IsoTpState::WaitBusy);
                 self.iso_tp_event(IsoTpEvent::Wait);
                 return;
             }
             FlowControlState::Overload => {
-                self.state = IsoTpState::Error;
+                self.state_append(IsoTpState::Error);
                 self.iso_tp_event(IsoTpEvent::ErrorOccurred(IsoTpError::OverloadFlow));
                 return;
             }
@@ -159,20 +157,20 @@ impl<C: Clone, F: Frame<Channel = C>> AsyncCanIsoTp<C, F> {
     }
 
     async fn write_waiting(&mut self, index: usize) -> Result<(), IsoTpError> {
+        if let Some(ctx) = &self.context.flow_ctrl {
+            if ctx.block_size != 0 &&
+                0 == ctx.block_size as usize % (index + 1) {
+                self.state_append(IsoTpState::WaitFlowCtrl);
+            }
+            sleep(Duration::from_micros(ctx.st_min as u64)).await;
+        }
+
         loop {
-            if self.state.contains(IsoTpState::Error) {
+            if self.state_contains(IsoTpState::Error) {
                 return Err(IsoTpError::DeviceError);
             }
 
-            if let Some(ctx) = &self.context.flow_ctrl {
-                if ctx.block_size != 0 &&
-                    0 == ctx.block_size as usize % (index + 1) {
-                    self.state |= IsoTpState::WaitFlowCtrl;
-                }
-                sleep(Duration::from_micros(ctx.st_min as u64)).await;
-            }
-
-            if self.state.contains(IsoTpState::Sending | IsoTpState::BussyWait | IsoTpState::WaitFlowCtrl) {
+            if self.state_contains(IsoTpState::Sending | IsoTpState::WaitBusy | IsoTpState::WaitFlowCtrl) {
                 sleep(Duration::from_micros(10)).await;
             }
             else {
@@ -181,5 +179,39 @@ impl<C: Clone, F: Frame<Channel = C>> AsyncCanIsoTp<C, F> {
         }
 
         Ok(())
+    }
+
+    #[inline]
+    fn state_contains(&self, flags: IsoTpState) -> bool {
+        match self.state.lock() {
+            Ok(v) => *v & flags != IsoTpState::Idle,
+            Err(_) => {
+                log::warn!("ISO-TP: state mutex is poisoned");
+                false
+            },
+        }
+    }
+
+    #[inline]
+    fn state_append(&self, flags: IsoTpState) {
+        match self.state.lock() {
+            Ok(mut v) => {
+                if flags.contains(IsoTpState::Error) {
+                    *v = IsoTpState::Error;
+                }
+                else {
+                    *v |= flags;
+                }
+            }
+            Err(_) => log::warn!("ISO-TP: state mutex is poisoned"),
+        }
+    }
+
+    #[inline]
+    fn state_remove(&self, flags: IsoTpState) {
+        match self.state.lock() {
+            Ok(mut v) => v.remove(flags),
+            Err(_) => log::warn!("ISO-TP: state mutex is poisoned"),
+        }
     }
 }

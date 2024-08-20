@@ -12,13 +12,6 @@ use isotp_rs::{FlowControlContext, FlowControlState, FrameType, IsoTpFrame};
 use isotp_rs::error::Error as IsoTpError;
 use crate::constant::*;
 
-// pub trait CanIsoTp {
-//     /// register iso-tp event listener
-//     fn register_listener(&mut self, listener: Box<dyn IsoTpEventListener>) -> bool;
-//     /// unregister iso-tp event listener
-//     fn unregister_listener(&mut self) -> bool;
-// }
-
 /// ISO-TP address format.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum AddressFormat {
@@ -264,12 +257,9 @@ mod tests {
                     assert_eq!(frame.encode(None), hex!("10 0f 62 f1 87 44 56 43").to_vec());
                 },
                 1 => {
-                    assert_eq!(frame.encode(None), hex!("30 00 0a 00 00 00 00 00").to_vec());
-                },
-                2 => {
                     assert_eq!(frame.encode(None), hex!("21 37 45 32 30 30 30 30").to_vec());
                 },
-                3 => assert_eq!(frame.encode(None), hex!("22 30 37 00 00 00 00 00").to_vec()),
+                2 => assert_eq!(frame.encode(None), hex!("22 30 37 aa aa aa aa aa").to_vec()),
                 _ => panic!()
             }
         }
@@ -283,22 +273,19 @@ mod tests {
                     size -= FIRST_FRAME_SIZE_2004;
                     assert_eq!(frame.encode(None), hex!("10 96 30 30 30 30 30 30"))
                 },
-                1 => {
-                    assert_eq!(frame.encode(None), hex!("30 00 0a 00 00 00 00 00").to_vec());
-                },
-                2..=15 => {
+                1..=15 => {
                     size -= CONSECUTIVE_FRAME_SIZE;
-                    let expect = vec![0x20 + (index - 1) as u8, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30];
+                    let expect = vec![0x20 + index as u8, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30];
                     assert_eq!(frame.encode(None), expect);
                 }
                 _ => {
                     if size > CONSECUTIVE_FRAME_SIZE {
                         size -= CONSECUTIVE_FRAME_SIZE;
-                        let expect = vec![0x20 + ((index - 1) % 16) as u8, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30];
+                        let expect = vec![0x20 + (index % 16) as u8, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30];
                         assert_eq!(frame.encode(None), expect);
                     }
                     else {
-                        let mut expect = vec![0x20 + ((index - 1) % 16) as u8];
+                        let mut expect = vec![0x20 + (index % 16) as u8];
                         for _ in 0..size {
                             expect.push(0x30);
                         }

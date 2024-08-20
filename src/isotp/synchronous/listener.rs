@@ -11,7 +11,7 @@ where
     F: Frame<Channel = C> + Clone {
     fn on_frame_received(&mut self, channel: C, frames: &Vec<F>) {
         if channel != self.channel
-            || self.state.contains(IsoTpState::Error) {
+            || self.state_contains(IsoTpState::Error) {
             return;
         }
 
@@ -37,7 +37,7 @@ where
                     },
                     Err(e) => {
                         log::warn!("ISO-TP(CAN sync) - data convert to frame failed: {}", e);
-                        self.state |= IsoTpState::Error;
+                        self.state_append(IsoTpState::Error);
                         self.iso_tp_event(IsoTpEvent::ErrorOccurred(e));
 
                         break;
@@ -54,7 +54,7 @@ where
         let id = id.as_raw();
         if id == self.address.tx_id ||
             id == self.address.fid {
-            self.state.remove(IsoTpState::Sending);
+            self.state_remove(IsoTpState::Sending);
         }
     }
 }
