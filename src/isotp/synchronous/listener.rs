@@ -1,15 +1,29 @@
 use std::fmt::Display;
-use isotp_rs::device::Listener;
 use isotp_rs::{IsoTpEvent, IsoTpFrame, IsoTpState};
+use crate::device::Listener;
 use crate::frame::Frame;
-use crate::identifier::Id;
 use crate::isotp::{CanIsoTpFrame, SyncCanIsoTp};
 
-impl<C, F> Listener<C, Id, F> for SyncCanIsoTp<C, F>
+impl<C, F> Listener<C, F> for SyncCanIsoTp<C, F>
 where
     C: Clone + Eq + Display,
     F: Frame<Channel = C> + Clone {
-    fn on_frame_received(&mut self, channel: C, frames: &Vec<F>) {
+
+    fn on_frame_transmitting(&mut self, _: C, _: &F) {
+
+    }
+    fn on_frame_transmitted(&mut self, channel: C, id: u32) {
+        if channel != self.channel {
+            return;
+        }
+
+        if id == self.address.tx_id ||
+            id == self.address.fid {
+            self.state_remove(IsoTpState::Sending);
+        }
+    }
+
+    fn on_frame_received(&mut self, channel: C, frames: &[F]) {
         if channel != self.channel
             || self.state_contains(IsoTpState::Error) {
             return;
@@ -44,17 +58,6 @@ where
                     }
                 }
             }
-        }
-    }
-    fn on_frame_transmitted(&mut self, channel: C, id: Id) {
-        if channel != self.channel {
-            return;
-        }
-
-        let id = id.as_raw();
-        if id == self.address.tx_id ||
-            id == self.address.fid {
-            self.state_remove(IsoTpState::Sending);
         }
     }
 }

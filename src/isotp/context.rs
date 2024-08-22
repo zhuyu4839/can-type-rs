@@ -72,13 +72,8 @@ impl IsoTpContext {
 
         let buff_len = self.consecutive.buffer.len();
         let target_len = self.consecutive.length.unwrap() as usize;
-        if buff_len > target_len {
-            Err(IsoTpError::InvalidDataLength {
-                expect: target_len,
-                actual: buff_len
-            })
-        }
-        else if buff_len == target_len {
+        if buff_len >= target_len {
+            self.consecutive.buffer.resize(target_len, 0);
             Ok(IsoTpEvent::DataReceived(self.consecutive.buffer.clone()))
         }
         else {

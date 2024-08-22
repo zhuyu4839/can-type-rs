@@ -1,5 +1,4 @@
 use std::fmt::{Debug, Display, Formatter, Write};
-use isotp_rs::IsoTpFrame;
 use crate::identifier::Id;
 
 #[repr(C)]
@@ -21,7 +20,8 @@ pub trait Frame {
     fn new_remote(id: impl Into<Id>, len: usize) -> Option<Self>
         where Self: Sized;
 
-    fn from_iso_tp(id: impl Into<Id>, frame: impl IsoTpFrame, padding: Option<u8>) -> Option<Self>
+    #[cfg(feature = "isotp-rs")]
+    fn from_iso_tp(id: impl Into<Id>, frame: impl isotp_rs::IsoTpFrame, padding: Option<u8>) -> Option<Self>
     where
         Self: Sized {
         let data = frame.encode(padding);

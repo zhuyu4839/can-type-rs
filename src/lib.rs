@@ -2,6 +2,8 @@ pub mod constant;
 pub mod frame;
 pub mod identifier;
 pub mod j1939;
+pub mod device;
+#[cfg(feature = "isotp-rs")]
 pub mod isotp;
 
 pub trait Conversion
