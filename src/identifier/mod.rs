@@ -1,5 +1,5 @@
 use std::fmt::format;
-use crate::constant::{EFF_MASK, SFF_MASK_INV};
+use crate::constant::{EFF_MASK, SFF_MASK};
 use crate::j1939::J1939Id;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -19,7 +19,7 @@ impl Id {
             Self::Extended(bits)
         }
         else {
-            if bits & SFF_MASK_INV > 0 {
+            if bits & (!SFF_MASK & EFF_MASK) > 0 {
                 Self::Extended(bits)
             }
             else {

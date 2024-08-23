@@ -24,8 +24,6 @@ bitflags! {
 /// Mask for standard identifiers.
 pub const SFF_MASK: u32 = 0x0000_07FF;
 
-pub const SFF_MASK_INV: u32 = 0x1FFF_F800;
-
 /// Mask for extended identifiers.
 pub const EFF_MASK: u32 = 0x1FFF_FFFF;
 /// The max sizeof can-frame's data.
