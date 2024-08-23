@@ -1,18 +1,19 @@
 use std::fmt::Display;
-use isotp_rs::{IsoTpEvent, IsoTpFrame, IsoTpState};
+use isotp_rs::{IsoTpEvent, IsoTpFrame, IsoTpState, can::CanIsoTpFrame};
 use crate::frame::Frame;
 use crate::device::Listener;
-use crate::isotp::{CanIsoTpFrame, AsyncCanIsoTp};
+use crate::isotp::AsyncCanIsoTp;
 
-impl<C, F> Listener<C, F> for AsyncCanIsoTp<C, F>
+impl<C, Id, F> Listener<C, Id, F> for AsyncCanIsoTp<C, F>
 where
     C: Clone + Eq + Display + Send + Sync,
+    Id: PartialEq<u32>,
     F: Frame<Channel = C> + Clone + Send + Sync {
 
     fn on_frame_transmitting(&mut self, _: C, _: &F) {
     }
 
-    fn on_frame_transmitted(&mut self, channel: C, id: u32) {
+    fn on_frame_transmitted(&mut self, channel: C, id: Id) {
         if channel != self.channel {
             return;
         }

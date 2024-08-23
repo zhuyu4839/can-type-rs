@@ -4,11 +4,10 @@ use std::sync::{Arc, Mutex};
 use std::sync::mpsc::Sender;
 use std::thread::sleep;
 use std::time::Duration;
-use isotp_rs::{FlowControlContext, FlowControlState, IsoTpEvent, IsoTpEventListener, IsoTpFrame, IsoTpState};
+use isotp_rs::{FlowControlContext, FlowControlState, IsoTpEvent, IsoTpEventListener, IsoTpFrame, IsoTpState, can::{Address, CanIsoTpFrame}};
 use isotp_rs::error::Error as IsoTpError;
 use crate::frame::Frame;
 use crate::identifier::Id;
-use crate::isotp::{Address, CanIsoTpFrame};
 use crate::isotp::context::IsoTpContext;
 
 #[derive(Clone)]

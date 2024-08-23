@@ -1,5 +1,7 @@
 ## CAN type define that based from [can-types](https://crates.io/crates/can-types) crate
 
+### This crate is deprecated. All code is move to [isopt-rs](https://github.com/zhuyu4839/isotp-rs/)
+
   * `CanMessage` example
 
   ```rust

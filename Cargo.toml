@@ -1,6 +1,6 @@
 [package]
 name = "can-type-rs"
-version = "1.0.7"
+version = "1.0.8"
 edition = "2021"
 authors = ["zhuyu <zhuyu4839@gmail.com>"]
 keywords = ["can", "j1939"]
@@ -22,18 +22,12 @@ features = ["rt-multi-thread", "time"]
 optional = true
 
 [dependencies.isotp-rs]
-version = "0.1.6"
+version = "0.1.7"
 optional = true
+features = ["std2004"]
 
 [dev-dependencies]
 anyhow = "1"
-hex-literal = "0.4"
 
 [features]
-default = ["std2004"]
-
-std2004 = []
-std2016 = []
-can-fd = []
-
-
+default = ["tokio", "isotp-rs"]
